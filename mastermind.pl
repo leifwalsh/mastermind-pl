@@ -5,79 +5,118 @@ use strict;
 use Quantum::Superpositions;
 use Term::ANSIColor;
 
-my @pegcolors = ( "r", "c", "y", "p", "g", "b" );
+my( %pegcolors, %keycolors, %out );
 
-my %keycolors = ( nil => "ko",
-                  white => "kw",
-                  red => "kr" );
+%pegcolors = ( "r" => 1,
+               "c" => 1,
+               "y" => 1,
+               "p" => 1,
+               "g" => 1,
+               "b" => 1 );
 
-my %out = ( "r" => colored("o", 'red bold'),
-            "c" => colored("o", 'blue bold'),
-            "y" => colored("o", 'yellow bold'),
-            "p" => colored("o", 'magenta bold'),
-            "g" => colored("o", 'green bold'),
-            "b" => colored("o", 'dark blue bold'),
-            "ko" => colored(".", 'black'),
-            "kw" => colored("o", 'white'),
-            "kr" => colored("o", 'red') );
+%keycolors = ( nil => "kz",
+               white => "kw",
+               red => "kr" );
 
-sub shuffle {
-  my $a = shift;
-  my $i = @$a;
-  while (--$i) {
-    my $j = int rand ($i + 1);
-    @$a[$i, $j] = @$a[$j, $i];
-  }
-}
+%out = ( "r" => colored("o", 'red bold'),
+         "c" => colored("o", 'cyan bold'),
+         "y" => colored("o", 'yellow bold'),
+         "p" => colored("o", 'magenta bold'),
+         "g" => colored("o", 'green bold'),
+         "b" => colored("o", 'dark blue bold'),
+         "kz" => colored(".", 'black'),
+         "kw" => colored("o", 'white'),
+         "kr" => colored("o", 'red') );
 
-sub enumerate {
-  my $a = shift;
-  foreach my $i (0 .. $#$a) {
-    $a->[$i] = [ $i, $a->[$i] ];
-  }
-}
+sub calculate_key {
+    my( $guess, $target, $key, $used );
 
-sub calculate_matches {
-  my ( $guess, $target ) = @_;
+    ( $guess, $target ) = @_;
 
-  my $key = [];
-  my $guesscopy = [ @$guess ];
+    $key = [ $keycolors{nil},
+             $keycolors{nil},
+             $keycolors{nil},
+             $keycolors{nil} ];
+    $used = [ 0, 0, 0, 0 ];
 
-  enumerate $guesscopy;
-  for my $p (@$guesscopy) {
-    my ($idx, $guess_peg) = @$p;
+    FIND_RED: foreach my $i (0 .. $#$guess) {
+        my $guess_peg = $guess->[$i];
 
-    if ($guess_peg eq $target->[$idx]) {
-      push @$key, $keycolors{red};
-    } elsif ($guess_peg eq any(@$target)) {
-      push @$key, $keycolors{white};
-    } else {
-      push @$key, $keycolors{nil};
+        if ($guess_peg eq $target->[$i]) {
+            $key->[$i] = $keycolors{red};
+            $used->[$i] = 1;
+        }
     }
-  }
 
-  shuffle $key;
+    FIND_WHITE: foreach my $i (0 .. $#$guess) {
+        my $guess_peg = $guess->[$i];
 
-  return $key;
+        next FIND_WHITE if ($key->[$i] ne $keycolors{nil});
+
+        SEARCH: foreach my $j (0 .. $#$target) {
+            my $target_peg = $target->[$j];
+
+            if (!$used->[$j] and ($guess_peg eq $target_peg)) {
+                $key->[$i] = $keycolors{white};
+                $used->[$j] = 1;
+                last SEARCH;
+            }
+        }
+    }
+
+    return $key;
 }
 
-# TEST:
-my $guess = [ qw(r c c y) ];
-my $target = [ qw(b y c p) ];
-my $matches = calculate_matches $guess, $target;
+sub get_input {
+    my( $line, $guess, $errchar, $err );
 
-print "Guess:  [ ";
-foreach my $p (@$guess) {
-  print $out{$p}, " ";
+    print "Enter your guess [", join(" ", sort(keys %pegcolors)), "]: ";
+
+    INPUT: while (<>) {
+        chomp;
+        $guess = [ split /\ / ];
+
+        $err = "";
+        if ($#$guess != 3) {
+            $err = " (must input exactly 4 pegs)";
+            next INPUT;
+        }
+
+        VERIFY_PEGS: foreach my $p (@$guess) {
+            if (!$pegcolors{$p}) {
+                $err = " (invalid char '$p')";
+                next INPUT;
+            }
+        }
+
+        last INPUT;
+    } continue {
+        print "Try again$err: ";
+    }
+
+    return $guess;
 }
-print "]\nTarget: [ ";
-foreach my $p (@$target) {
-  print $out{$p}, " ";
+
+# main:
+my( $round, $guess, $rands, $target, $key );
+
+$rands = [ (int rand 4), (int rand 4), (int rand 4), (int rand 4) ];
+$target = [ map { (sort keys %pegcolors)[$_] } @$rands ];
+
+PLAY_ROUND: for ($round = 1; $round <= 6; ++$round) {
+    $guess = get_input;
+    print "[", join(" ", map { $out{$_} } @$guess ), "]";
+
+    $key = calculate_key($guess, $target);
+    if ($keycolors{red} eq all(@$key)) {
+        print "\nYou win!\n";
+        last PLAY_ROUND;
+    }
+    print " [", join(" ", map { $out{$_} } sort(@$key) ), "]\n";
 }
-print "]\nKey:    [ ";
-foreach my $p (@$matches) {
-  print $out{$p}, " ";
+if ($round > 6) {
+    print "You lose!\n";
+    print "Target: [", join(" ", map { $out{$_} } @$target ), "]\n";
 }
-print "]\n";
 
 exit 0;
