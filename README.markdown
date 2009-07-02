@@ -2,8 +2,8 @@ mastermind.pl
 =============
 
 A version of the game
-"Mastermind":http://en.wikipedia.org/wiki/Mastermind_(board_game) written in
-perl.
+[Mastermind](http://en.wikipedia.org/wiki/Mastermind_%28board_game%29) written
+in perl.
 
 Usage
 =====
