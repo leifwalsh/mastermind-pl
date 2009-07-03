@@ -5,7 +5,7 @@ use strict;
 use Quantum::Superpositions;
 use Term::ANSIColor;
 
-my( %pegcolors, %keycolors, %out );
+my( %pegcolors, $npegcolors, %keycolors, %out );
 
 %pegcolors = ( "r" => 1,
                "c" => 1,
@@ -13,6 +13,8 @@ my( %pegcolors, %keycolors, %out );
                "p" => 1,
                "g" => 1,
                "b" => 1 );
+
+$npegcolors = (keys %pegcolors) + 1;
 
 %keycolors = ( nil => "kz",
                white => "kw",
@@ -97,11 +99,14 @@ sub get_input {
     return $guess;
 }
 
-# main:
-my( $round, $guess, $rands, $target, $key );
+sub randompeg {
+    return (sort keys %pegcolors)[int rand ($npegcolors)];
+}
 
-$rands = [ (int rand 4), (int rand 4), (int rand 4), (int rand 4) ];
-$target = [ map { (sort keys %pegcolors)[$_] } @$rands ];
+# main:
+my( $round, $guess, $target, $key );
+
+$target = [ randompeg(), randompeg(), randompeg(), randompeg() ];
 
 PLAY_ROUND: for ($round = 1; $round <= 6; ++$round) {
     $guess = get_input;
